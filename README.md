@@ -14,28 +14,73 @@ $ pixogram "hello world"
 ```
 
 ```
-$ pixogram -o logo.png "track:#bfe3ff" "ec:#dcd2a0"
+$ pixogram -o logo.png "pix" "o:accent" "gram"
 ```
 
 ## Usage
 
 ```
-pixogram [-o FILE] [-b BG] [-s SCALE] TEXT[:COLOR] ...
+pixogram [-o FILE] [-p PALETTE] [-P] [-b BG] [-s SCALE] TEXT[:COLOR] ...
 ```
 
 - No `-o`: prints ASCII block art to stdout (good for pasting into a code comment — no color needed).
 - `-o FILE`: writes a PNG instead (needs ImageMagick's `magick`).
-- `-b COLOR`: background color, hex (default `#00182A`).
 - `-s SCALE`: PNG upscale factor per grid cell (default `15`, the same mini.nvim uses for their own README — `15 * 7 = 105px` tall).
-- Each text argument can carry its own `:COLOR` for PNG mode (default `#D9D8AA`). Multiple arguments are just concatenated — no gap between them — because every glyph already carries its own trailing blank column.
+- Each text argument can carry its own `:COLOR` for PNG mode; with no `:COLOR` it uses the active palette's fg. Multiple arguments are just concatenated — no gap between them — because every glyph already carries its own trailing blank column.
 - Only `a-z`, `0-9`, and space exist. Any other character renders as a blank cell.
-- **Styled letter (2 colors in one glyph):** for a single letter, `LETTER:COLOR1,COLOR2` paints part of that glyph one color and the rest another — the same treatment mini.nvim gives the "n" in their logo. Only works one character at a time, and only for letters with a style defined in the script (currently: `o`, `n`). It's not automatic or "smart" — it's an optional `style[]` table you add to by hand when you want that effect on a new letter.
 
-  ```
-  pixogram -o logo.png "mini:#B3DAF9" "n:#A6E1E2,#B8E1C1" "vim:#D9D8AA"
-  ```
+### Palettes
 
-  (mini.nvim's own logo also has a "." after "mini" — `pixogram` has no `.` glyph, so it's left out here.)
+`-p PALETTE` picks one of 4 built-in palettes (default: `autumn`). Each is `bg` + `fg` + two accent colors, real values from [mini.hues](https://github.com/nvim-mini/mini.nvim)'s 4 bundled color schemes (see [Credits](#credits)) — not made up. `mini` is the actual real mini.nvim logo colors; it exists as an option but isn't the default, so pixogram doesn't just look like a reskin of the thing it's copying.
+
+| palette  | bg        | fg        | accents            |
+|----------|-----------|-----------|---------------------|
+| `autumn` | `#262029` | `#EFCFAB` | `#A7E1E8` `#D3DAAD` |
+| `spring` | `#1C2617` | `#D8DA9D` | `#94E5EA` `#ABE5BE` |
+| `summer` | `#27211E` | `#F6CC9B` | `#93E4EE` `#D8CAFF` |
+| `mini`   | `#00182A` | `#D9D8AA` | `#A6E1E2` `#B8E1C1` |
+
+```
+pixogram -o logo.png -p spring "pix" "o:accent" "gram"
+```
+
+`-P` writes one PNG per built-in palette instead of just one (`FILE-PALETTE.ext` for each), so you can compare and pick:
+
+```
+pixogram -o logo.png -P "pix" "o:accent" "gram"
+# -> logo-mini.png logo-spring.png logo-summer.png logo-autumn.png
+```
+
+`-b COLOR` overrides just the background, on top of whichever palette is active.
+
+### Styled letter (2 colors in one glyph)
+
+For a single letter, `LETTER:COLOR1,COLOR2` paints part of that glyph one color and the rest another — the same treatment mini.nvim gives the "n" in their logo. Only works one character at a time, and only for letters with a style defined in the script (currently: `o`, `n`). It's not automatic or "smart" — it's an optional `style[]` table you add to by hand when you want that effect on a new letter. `LETTER:accent` is shorthand for the active palette's own two accent colors — that's what the examples above are using.
+
+```
+pixogram -o logo.png "mini:#B3DAF9" "n:#A6E1E2,#B8E1C1" "vim:#D9D8AA"
+```
+
+(mini.nvim's own logo also has a "." after "mini" — `pixogram` has no `.` glyph, so it's left out here.)
+
+### Project defaults (`.env`)
+
+A `.env` file in the current directory is read for defaults — read as plain `KEY=VALUE` lines, never executed:
+
+```
+PIXOGRAM_PALETTE=spring
+```
+
+or a fully custom palette, same values you'd otherwise pass as flags:
+
+```
+PIXOGRAM_BG=#1a0033
+PIXOGRAM_FG=#ffddaa
+PIXOGRAM_ACCENT1=#ff88cc
+PIXOGRAM_ACCENT2=#88ffcc
+```
+
+An explicit `-p` on the command line always wins over `.env` (so you can still reach for a built-in palette even in a project that has its own default); `-b` always wins over both.
 
 ## Install
 
@@ -49,6 +94,8 @@ Just needs POSIX `sh` (tested with `dash`), `awk`, and, for `-o`, `magick` (Imag
 
 ## Credits
 
-All credit for the font and the technique goes to **[Evgeni Chasnovski](https://github.com/echasnovski)** ([@echasnovski](https://github.com/echasnovski)), author of [mini.nvim](https://github.com/nvim-mini/mini.nvim). Every letter's pixel grid was transcribed pixel-by-pixel from the [`logo-2/font/*.gif`](https://github.com/nvim-mini/assets/tree/main/logo-2/font) files in the [nvim-mini/assets](https://github.com/nvim-mini/assets) repo (MIT License), which is the actual generator behind the mini.nvim logo (`logo-2/generate.lua`). The default colors (`#00182A` background, `#D9D8AA` letter) come from there too.
+All credit for the font and the technique goes to **[Evgeni Chasnovski](https://github.com/echasnovski)** ([@echasnovski](https://github.com/echasnovski)), author of [mini.nvim](https://github.com/nvim-mini/mini.nvim). Every letter's pixel grid was transcribed pixel-by-pixel from the [`logo-2/font/*.gif`](https://github.com/nvim-mini/assets/tree/main/logo-2/font) files in the [nvim-mini/assets](https://github.com/nvim-mini/assets) repo (MIT License), which is the actual generator behind the mini.nvim logo (`logo-2/generate.lua`).
+
+The built-in palettes are also his: `mini` is the real mini.nvim logo palette (in turn, the `miniwinter` scheme from his [mini.hues](https://github.com/nvim-mini/mini.nvim/blob/main/readmes/mini-hues.md) colorscheme generator), and `spring`/`summer`/`autumn` are mini.hues' 3 other bundled seasonal schemes — real, deliberately-designed colors, not invented for this project.
 
 `pixogram` wouldn't exist without that work — it's essentially a reimplementation of the same idea in POSIX `sh` + `awk`, to generate arbitrary text instead of just mini.nvim's own modules. See [LICENSE](LICENSE) for the full copyright notice.

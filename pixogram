@@ -11,23 +11,52 @@ set -eu
 
 usage() {
 	cat <<'EOF'
-usage: pixogram [-o FILE] [-b BG] [-s SCALE] TEXT[:COLOR] ...
+usage: pixogram [-o FILE] [-p PALETTE] [-P] [-b BG] [-s SCALE] TEXT[:COLOR] ...
 
   No -o        print ASCII block art to stdout (colors ignored)
   -o FILE      write a PNG instead (needs ImageMagick's `magick`)
-  -b COLOR     background color, hex (default #00182A)
+  -p PALETTE   named palette: mini, spring, summer, autumn (default: autumn)
+  -P           write one PNG per built-in palette instead of just one
+               (needs -o; each is written as FILE-PALETTE.ext, for comparing)
+  -b COLOR     override just the background, hex
   -s SCALE     PNG upscale factor per grid cell (default 15)
   -h           show this help
 
-Each TEXT argument may carry its own :COLOR for -o mode
-(default #D9D8AA). Multiple TEXT args are just concatenated — no gap is
-inserted, since every glyph already carries its own trailing blank column.
-Unsupported characters (only a-z0-9 and space exist) render as a blank cell.
+Each TEXT argument may carry its own :COLOR for -o mode; with no :COLOR it
+uses the active palette's fg. Multiple TEXT args are just concatenated — no
+gap is inserted, since every glyph already carries its own trailing blank
+column. Unsupported characters (only a-z0-9 and space exist) render blank.
+
+For a styled letter (see LETTER:COLOR1,COLOR2 below), :accent is shorthand
+for the active palette's own two accent colors.
+
+A .env file in the current directory is read for defaults (real values only,
+never executed): PIXOGRAM_PALETTE=name, or PIXOGRAM_BG/FG/ACCENT1/ACCENT2=#hex
+for a fully custom palette. CLI flags win over .env.
 
 examples:
   pixogram "hello world"
   pixogram -o logo.png "TRACK:#bfe3ff" "EC:#dcd2a0"
+  pixogram -o logo.png -p spring "pix" "o:accent" "gram"
+  pixogram -o logo.png -P "pix" "o:accent" "gram"
 EOF
+}
+
+# name -> bg fg accent1 accent2. mini is the real mini.nvim logo colors
+# (their miniwinter mini.hues scheme); spring/summer/autumn are the other
+# 3 bundled mini.hues season schemes, same "warm fg + cool accent pair"
+# recipe as the real logo, different hues so they're not just a reskin.
+resolve_palette() {
+	case "$1" in
+	mini) base_bg="#00182A" base_fg="#D9D8AA" base_a1="#A6E1E2" base_a2="#B8E1C1" ;;
+	spring) base_bg="#1C2617" base_fg="#D8DA9D" base_a1="#94E5EA" base_a2="#ABE5BE" ;;
+	summer) base_bg="#27211E" base_fg="#F6CC9B" base_a1="#93E4EE" base_a2="#D8CAFF" ;;
+	autumn) base_bg="#262029" base_fg="#EFCFAB" base_a1="#A7E1E8" base_a2="#D3DAAD" ;;
+	*)
+		echo "pixogram: unknown palette '$1' (mini, spring, summer, autumn)" >&2
+		exit 1
+		;;
+	esac
 }
 
 AWKPROG=$(cat <<'AWKEOF'
@@ -362,15 +391,112 @@ render() {
 	printf '%s' "$AWKPROG" | awk -v text="$1" -v mode="$2" -f -
 }
 
+# builds one PNG at $1, from "$@" (the TEXT[:COLOR] args) using the currently
+# set bg/fg/a1/a2.
+build_png() {
+	out="$1"
+	shift
+	tmpdir=$(mktemp -d)
+	trap 'rm -rf "$tmpdir"' EXIT
+
+	first=true
+	for seg in "$@"; do
+		t="${seg%%:*}"
+		case "$seg" in
+		*:*) color="${seg#*:}" ;;
+		*) color="$fg" ;;
+		esac
+		[ "$color" = "accent" ] && color="$a1,$a2"
+		t_lower=$(printf '%s' "$t" | tr 'A-Z' 'a-z')
+		png="$tmpdir/seg.png"
+		color2=""
+
+		case "$color" in
+		*,*)
+			# TEXT:COLOR1,COLOR2 — 2-color styled glyph. Only meaningful for
+			# a single letter that has a `style[]` entry (see AWKPROG);
+			# anything else falls back to plain COLOR1 below.
+			color1="${color%%,*}"
+			color2="${color#*,}"
+			;;
+		*) color1="$color" ;;
+		esac
+
+		if [ -n "${color2:-}" ] && [ "${#t_lower}" -eq 1 ]; then
+			grid3=$(render "$t_lower" grid3)
+			width=$(printf '%s\n' "$grid3" | head -n 1 | awk '{ print length }')
+			pgm="$tmpdir/seg.pgm"
+			{
+				printf 'P2\n%s 7\n255\n' "$width"
+				printf '%s\n' "$grid3" | awk '{
+					out = ""
+					for (i = 1; i <= length($0); i++) {
+						d = substr($0, i, 1)
+						out = out (d == "0" ? "0" : d == "1" ? "128" : "255") " "
+					}
+					print out
+				}'
+			} >"$pgm"
+			clut3="$tmpdir/clut3.png"
+			magick xc:"$bg" xc:"$color1" xc:"$color2" +append "$clut3"
+			magick "$pgm" -colorspace sRGB "$clut3" -clut "$png"
+		else
+			grid=$(render "$t_lower" grid)
+			width=$(printf '%s\n' "$grid" | head -n 1 | awk '{ print length }')
+			pbm="$tmpdir/seg.pbm"
+			{
+				printf 'P1\n%s 7\n' "$width"
+				printf '%s\n' "$grid"
+			} >"$pbm"
+			# -opaque collapses to grayscale on a bilevel-origin image in some
+			# ImageMagick builds (loses the fill color); a 2-stop CLUT keeps true RGB.
+			magick "$pbm" -colorspace sRGB \( -size 1x2 "gradient:$color1-$bg" \) -clut "$png"
+		fi
+		if $first; then
+			cp "$png" "$tmpdir/acc.png"
+			first=false
+		else
+			magick "$tmpdir/acc.png" "$png" -background "$bg" +append "$tmpdir/acc_next.png"
+			mv "$tmpdir/acc_next.png" "$tmpdir/acc.png"
+		fi
+	done
+
+	acc_width=$(magick identify -format '%w' "$tmpdir/acc.png")
+	# every glyph carries its own trailing blank column, so the right edge
+	# already has a 1px margin — the left edge doesn't, since nothing precedes
+	# the first glyph. Pad the canvas 1px on the left only (anchor East).
+	magick "$tmpdir/acc.png" -gravity East -background "$bg" -extent "$((acc_width + 1))x7" "$tmpdir/acc_padded.png"
+	magick "$tmpdir/acc_padded.png" -filter point -resize "${scale}00%" "$out"
+	rm -rf "$tmpdir"
+	trap - EXIT
+	echo "$out"
+}
+
 outfile=""
-bg="#00182A"
-fg_default="#D9D8AA"
+env_palette="" env_bg="" env_fg="" env_a1="" env_a2=""
+cli_palette="" cli_bg=""
+all_palettes=false
 scale=15
 
-while getopts "o:b:s:h" opt; do
+# .env in the current directory, read (never executed) for defaults.
+if [ -f .env ]; then
+	while IFS='=' read -r k v; do
+		case "$k" in
+		PIXOGRAM_PALETTE) env_palette="$v" ;;
+		PIXOGRAM_BG) env_bg="$v" ;;
+		PIXOGRAM_FG) env_fg="$v" ;;
+		PIXOGRAM_ACCENT1) env_a1="$v" ;;
+		PIXOGRAM_ACCENT2) env_a2="$v" ;;
+		esac
+	done <.env
+fi
+
+while getopts "o:p:Pb:s:h" opt; do
 	case "$opt" in
 	o) outfile="$OPTARG" ;;
-	b) bg="$OPTARG" ;;
+	p) cli_palette="$OPTARG" ;;
+	P) all_palettes=true ;;
+	b) cli_bg="$OPTARG" ;;
 	s) scale="$OPTARG" ;;
 	h)
 		usage
@@ -405,75 +531,27 @@ command -v magick >/dev/null 2>&1 || {
 	exit 1
 }
 
-tmpdir=$(mktemp -d)
-trap 'rm -rf "$tmpdir"' EXIT
+if $all_palettes; then
+	base="${outfile%.*}"
+	ext="${outfile##*.}"
+	for name in mini spring summer autumn; do
+		resolve_palette "$name"
+		bg="$base_bg" fg="$base_fg" a1="$base_a1" a2="$base_a2"
+		build_png "$base-$name.$ext" "$@"
+	done
+	exit 0
+fi
 
-first=true
-for seg in "$@"; do
-	t="${seg%%:*}"
-	case "$seg" in
-	*:*) color="${seg#*:}" ;;
-	*) color="$fg_default" ;;
-	esac
-	t_lower=$(printf '%s' "$t" | tr 'A-Z' 'a-z')
-	png="$tmpdir/seg.png"
-	color2=""
-
-	case "$color" in
-	*,* )
-		# TEXT:COLOR1,COLOR2 — 2-color styled glyph. Only meaningful for a
-		# single letter that has a `style[]` entry (see AWKPROG); anything
-		# else falls back to plain COLOR1 below.
-		color1="${color%%,*}"
-		color2="${color#*,}"
-		;;
-	*) color1="$color" ;;
-	esac
-
-	if [ -n "${color2:-}" ] && [ "${#t_lower}" -eq 1 ]; then
-		grid3=$(render "$t_lower" grid3)
-		width=$(printf '%s\n' "$grid3" | head -n 1 | awk '{ print length }')
-		pgm="$tmpdir/seg.pgm"
-		{
-			printf 'P2\n%s 7\n255\n' "$width"
-			printf '%s\n' "$grid3" | awk '{
-				out = ""
-				for (i = 1; i <= length($0); i++) {
-					d = substr($0, i, 1)
-					out = out (d == "0" ? "0" : d == "1" ? "128" : "255") " "
-				}
-				print out
-			}'
-		} >"$pgm"
-		clut3="$tmpdir/clut3.png"
-		magick xc:"$bg" xc:"$color1" xc:"$color2" +append "$clut3"
-		magick "$pgm" -colorspace sRGB "$clut3" -clut "$png"
-	else
-		grid=$(render "$t_lower" grid)
-		width=$(printf '%s\n' "$grid" | head -n 1 | awk '{ print length }')
-		pbm="$tmpdir/seg.pbm"
-		{
-			printf 'P1\n%s 7\n' "$width"
-			printf '%s\n' "$grid"
-		} >"$pbm"
-		# -opaque collapses to grayscale on a bilevel-origin image in some
-		# ImageMagick builds (loses the fill color); a 2-stop CLUT keeps true RGB.
-		magick "$pbm" -colorspace sRGB \( -size 1x2 "gradient:$color1-$bg" \) -clut "$png"
-	fi
-	if $first; then
-		cp "$png" "$tmpdir/acc.png"
-		first=false
-	else
-		magick "$tmpdir/acc.png" "$png" -background "$bg" +append "$tmpdir/acc_next.png"
-		mv "$tmpdir/acc_next.png" "$tmpdir/acc.png"
-	fi
-done
-
-acc_width=$(magick identify -format '%w' "$tmpdir/acc.png")
-# every glyph carries its own trailing blank column, so the right edge already
-# has a 1px margin — the left edge doesn't, since nothing precedes the first
-# glyph. Pad the canvas 1px on the left only (anchor East) to match.
-magick "$tmpdir/acc.png" -gravity East -background "$bg" -extent "$((acc_width + 1))x7" "$tmpdir/acc_padded.png"
-
-magick "$tmpdir/acc_padded.png" -filter point -resize "${scale}00%" "$outfile"
-echo "$outfile"
+resolve_palette "${cli_palette:-${env_palette:-autumn}}"
+if [ -n "$cli_palette" ]; then
+	# an explicit -p wins clean over any individual .env override — only an
+	# explicit -b on top of it can still adjust the background.
+	fg="$base_fg" a1="$base_a1" a2="$base_a2"
+	bg="${cli_bg:-$base_bg}"
+else
+	fg="${env_fg:-$base_fg}"
+	a1="${env_a1:-$base_a1}"
+	a2="${env_a2:-$base_a2}"
+	bg="${cli_bg:-${env_bg:-$base_bg}}"
+fi
+build_png "$outfile" "$@"
