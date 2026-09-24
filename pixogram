@@ -1,0 +1,407 @@
+#!/bin/sh
+# pixogram — figlet-like pixel-art text, mini.nvim logo style: 4x7 blocky
+# glyphs, no antialiasing, no font hinting artifacts. Prints ASCII block art
+# to stdout, or (with -o) a colored PNG via ImageMagick.
+#
+# Font shapes are transcribed pixel-for-pixel from nvim-mini/assets
+# logo-2/font/*.gif (MIT License, (c) Evgeni Chasnovski) — see README.md.
+#
+# POSIX sh + awk do all the layout; `magick` is only needed for -o.
+set -eu
+
+usage() {
+	cat <<'EOF'
+usage: pixogram [-o FILE] [-b BG] [-s SCALE] TEXT[:COLOR] ...
+
+  No -o        print ASCII block art to stdout (colors ignored)
+  -o FILE      write a PNG instead (needs ImageMagick's `magick`)
+  -b COLOR     background color, hex (default #00182A)
+  -s SCALE     PNG upscale factor per grid cell (default 15)
+  -h           show this help
+
+Each TEXT argument may carry its own :COLOR for -o mode
+(default #D9D8AA). Multiple TEXT args are just concatenated — no gap is
+inserted, since every glyph already carries its own trailing blank column.
+Unsupported characters (only a-z0-9 and space exist) render as a blank cell.
+
+examples:
+  pixogram "hello world"
+  pixogram -o logo.png "TRACK:#bfe3ff" "EC:#dcd2a0"
+EOF
+}
+
+AWKPROG=$(cat <<'AWKEOF'
+function get(ch, r,    k) {
+	k = ch SUBSEP r
+	return (k in font) ? font[k] : "0000"
+}
+BEGIN {
+	font["0",0] = "0000"
+	font["0",1] = "0100"
+	font["0",2] = "1010"
+	font["0",3] = "1010"
+	font["0",4] = "1010"
+	font["0",5] = "0100"
+	font["0",6] = "0000"
+	font["1",0] = "0000"
+	font["1",1] = "1100"
+	font["1",2] = "0100"
+	font["1",3] = "0100"
+	font["1",4] = "0100"
+	font["1",5] = "1110"
+	font["1",6] = "0000"
+	font["2",0] = "0000"
+	font["2",1] = "1110"
+	font["2",2] = "0010"
+	font["2",3] = "1110"
+	font["2",4] = "1000"
+	font["2",5] = "1110"
+	font["2",6] = "0000"
+	font["3",0] = "0000"
+	font["3",1] = "1110"
+	font["3",2] = "0010"
+	font["3",3] = "0110"
+	font["3",4] = "0010"
+	font["3",5] = "1110"
+	font["3",6] = "0000"
+	font["4",0] = "0000"
+	font["4",1] = "1010"
+	font["4",2] = "1010"
+	font["4",3] = "1110"
+	font["4",4] = "0010"
+	font["4",5] = "0010"
+	font["4",6] = "0000"
+	font["5",0] = "0000"
+	font["5",1] = "1110"
+	font["5",2] = "1000"
+	font["5",3] = "1100"
+	font["5",4] = "0010"
+	font["5",5] = "1100"
+	font["5",6] = "0000"
+	font["6",0] = "0000"
+	font["6",1] = "1110"
+	font["6",2] = "1000"
+	font["6",3] = "1110"
+	font["6",4] = "1010"
+	font["6",5] = "1110"
+	font["6",6] = "0000"
+	font["7",0] = "0000"
+	font["7",1] = "1110"
+	font["7",2] = "0010"
+	font["7",3] = "0010"
+	font["7",4] = "0010"
+	font["7",5] = "0010"
+	font["7",6] = "0000"
+	font["8",0] = "0000"
+	font["8",1] = "1110"
+	font["8",2] = "1010"
+	font["8",3] = "1110"
+	font["8",4] = "1010"
+	font["8",5] = "1110"
+	font["8",6] = "0000"
+	font["9",0] = "0000"
+	font["9",1] = "1110"
+	font["9",2] = "1010"
+	font["9",3] = "1110"
+	font["9",4] = "0010"
+	font["9",5] = "1110"
+	font["9",6] = "0000"
+	font["a",0] = "0000"
+	font["a",1] = "1110"
+	font["a",2] = "1010"
+	font["a",3] = "1110"
+	font["a",4] = "1010"
+	font["a",5] = "1010"
+	font["a",6] = "0000"
+	font["b",0] = "0000"
+	font["b",1] = "1110"
+	font["b",2] = "1010"
+	font["b",3] = "1100"
+	font["b",4] = "1010"
+	font["b",5] = "1110"
+	font["b",6] = "0000"
+	font["c",0] = "0000"
+	font["c",1] = "1110"
+	font["c",2] = "1000"
+	font["c",3] = "1000"
+	font["c",4] = "1000"
+	font["c",5] = "1110"
+	font["c",6] = "0000"
+	font["d",0] = "0000"
+	font["d",1] = "1100"
+	font["d",2] = "1010"
+	font["d",3] = "1010"
+	font["d",4] = "1010"
+	font["d",5] = "1100"
+	font["d",6] = "0000"
+	font["e",0] = "0000"
+	font["e",1] = "1110"
+	font["e",2] = "1000"
+	font["e",3] = "1100"
+	font["e",4] = "1000"
+	font["e",5] = "1110"
+	font["e",6] = "0000"
+	font["f",0] = "0000"
+	font["f",1] = "1110"
+	font["f",2] = "1000"
+	font["f",3] = "1100"
+	font["f",4] = "1000"
+	font["f",5] = "1000"
+	font["f",6] = "0000"
+	font["g",0] = "0000"
+	font["g",1] = "1110"
+	font["g",2] = "1000"
+	font["g",3] = "1010"
+	font["g",4] = "1010"
+	font["g",5] = "1110"
+	font["g",6] = "0000"
+	font["h",0] = "0000"
+	font["h",1] = "1010"
+	font["h",2] = "1010"
+	font["h",3] = "1110"
+	font["h",4] = "1010"
+	font["h",5] = "1010"
+	font["h",6] = "0000"
+	font["i",0] = "0000"
+	font["i",1] = "1110"
+	font["i",2] = "0100"
+	font["i",3] = "0100"
+	font["i",4] = "0100"
+	font["i",5] = "1110"
+	font["i",6] = "0000"
+	font["j",0] = "0000"
+	font["j",1] = "0010"
+	font["j",2] = "0010"
+	font["j",3] = "0010"
+	font["j",4] = "1010"
+	font["j",5] = "1110"
+	font["j",6] = "0000"
+	font["k",0] = "0000"
+	font["k",1] = "1010"
+	font["k",2] = "1010"
+	font["k",3] = "1100"
+	font["k",4] = "1010"
+	font["k",5] = "1010"
+	font["k",6] = "0000"
+	font["l",0] = "0000"
+	font["l",1] = "1000"
+	font["l",2] = "1000"
+	font["l",3] = "1000"
+	font["l",4] = "1000"
+	font["l",5] = "1110"
+	font["l",6] = "0000"
+	font["m",0] = "0000"
+	font["m",1] = "1010"
+	font["m",2] = "1110"
+	font["m",3] = "1110"
+	font["m",4] = "1010"
+	font["m",5] = "1010"
+	font["m",6] = "0000"
+	font["n",0] = "0000"
+	font["n",1] = "1100"
+	font["n",2] = "1010"
+	font["n",3] = "1010"
+	font["n",4] = "1010"
+	font["n",5] = "1010"
+	font["n",6] = "0000"
+	font["o",0] = "0000"
+	font["o",1] = "1110"
+	font["o",2] = "1010"
+	font["o",3] = "1010"
+	font["o",4] = "1010"
+	font["o",5] = "1110"
+	font["o",6] = "0000"
+	font["p",0] = "0000"
+	font["p",1] = "1110"
+	font["p",2] = "1010"
+	font["p",3] = "1110"
+	font["p",4] = "1000"
+	font["p",5] = "1000"
+	font["p",6] = "0000"
+	font["q",0] = "0000"
+	font["q",1] = "1110"
+	font["q",2] = "1010"
+	font["q",3] = "1010"
+	font["q",4] = "1000"
+	font["q",5] = "1110"
+	font["q",6] = "0000"
+	font["r",0] = "0000"
+	font["r",1] = "1110"
+	font["r",2] = "1010"
+	font["r",3] = "1100"
+	font["r",4] = "1010"
+	font["r",5] = "1010"
+	font["r",6] = "0000"
+	font["s",0] = "0000"
+	font["s",1] = "1110"
+	font["s",2] = "1000"
+	font["s",3] = "1110"
+	font["s",4] = "0010"
+	font["s",5] = "1110"
+	font["s",6] = "0000"
+	font["t",0] = "0000"
+	font["t",1] = "1110"
+	font["t",2] = "0100"
+	font["t",3] = "0100"
+	font["t",4] = "0100"
+	font["t",5] = "0100"
+	font["t",6] = "0000"
+	font["u",0] = "0000"
+	font["u",1] = "1010"
+	font["u",2] = "1010"
+	font["u",3] = "1010"
+	font["u",4] = "1010"
+	font["u",5] = "1110"
+	font["u",6] = "0000"
+	font["v",0] = "0000"
+	font["v",1] = "1010"
+	font["v",2] = "1010"
+	font["v",3] = "1010"
+	font["v",4] = "1010"
+	font["v",5] = "0100"
+	font["v",6] = "0000"
+	font["w",0] = "0000"
+	font["w",1] = "1010"
+	font["w",2] = "1010"
+	font["w",3] = "1110"
+	font["w",4] = "1110"
+	font["w",5] = "1010"
+	font["w",6] = "0000"
+	font["x",0] = "0000"
+	font["x",1] = "1010"
+	font["x",2] = "1010"
+	font["x",3] = "0100"
+	font["x",4] = "1010"
+	font["x",5] = "1010"
+	font["x",6] = "0000"
+	font["y",0] = "0000"
+	font["y",1] = "1010"
+	font["y",2] = "1010"
+	font["y",3] = "1110"
+	font["y",4] = "0100"
+	font["y",5] = "0100"
+	font["y",6] = "0000"
+	font["z",0] = "0000"
+	font["z",1] = "1110"
+	font["z",2] = "0010"
+	font["z",3] = "0100"
+	font["z",4] = "1000"
+	font["z",5] = "1110"
+	font["z",6] = "0000"
+	font[" ",0] = "0000"
+	font[" ",1] = "0000"
+	font[" ",2] = "0000"
+	font[" ",3] = "0000"
+	font[" ",4] = "0000"
+	font[" ",5] = "0000"
+	font[" ",6] = "0000"
+
+	n = length(text)
+	for (r = 0; r < 7; r++) {
+		line = ""
+		for (i = 1; i <= n; i++) {
+			ch = substr(text, i, 1)
+			row = get(ch, r)
+			if (mode == "text") {
+				w = length(row)
+				for (c = 1; c <= w; c++) {
+					bit = substr(row, c, 1)
+					line = line (bit == "1" ? "█" : " ")
+				}
+			} else {
+				line = line row
+			}
+		}
+		print line
+	}
+}
+AWKEOF
+)
+
+render() {
+	# $1 = lowercased text, $2 = mode (grid|text)
+	printf '%s' "$AWKPROG" | awk -v text="$1" -v mode="$2" -f -
+}
+
+outfile=""
+bg="#00182A"
+fg_default="#D9D8AA"
+scale=15
+
+while getopts "o:b:s:h" opt; do
+	case "$opt" in
+	o) outfile="$OPTARG" ;;
+	b) bg="$OPTARG" ;;
+	s) scale="$OPTARG" ;;
+	h)
+		usage
+		exit 0
+		;;
+	*)
+		usage
+		exit 1
+		;;
+	esac
+done
+shift $((OPTIND - 1))
+
+[ $# -ge 1 ] || {
+	usage
+	exit 1
+}
+
+if [ -z "$outfile" ]; then
+	words=""
+	for seg in "$@"; do
+		t="${seg%%:*}"
+		words="$words $t"
+	done
+	text_lower=$(printf '%s' "${words# }" | tr 'A-Z' 'a-z')
+	render "$text_lower" text
+	exit 0
+fi
+
+command -v magick >/dev/null 2>&1 || {
+	echo "pixogram: -o needs ImageMagick's 'magick' on PATH" >&2
+	exit 1
+}
+
+tmpdir=$(mktemp -d)
+trap 'rm -rf "$tmpdir"' EXIT
+
+first=true
+for seg in "$@"; do
+	t="${seg%%:*}"
+	case "$seg" in
+	*:*) color="${seg#*:}" ;;
+	*) color="$fg_default" ;;
+	esac
+	t_lower=$(printf '%s' "$t" | tr 'A-Z' 'a-z')
+	grid=$(render "$t_lower" grid)
+	width=$(printf '%s\n' "$grid" | head -n 1 | awk '{ print length }')
+	pbm="$tmpdir/seg.pbm"
+	{
+		printf 'P1\n%s 7\n' "$width"
+		printf '%s\n' "$grid"
+	} >"$pbm"
+	png="$tmpdir/seg.png"
+	# -opaque collapses to grayscale on a bilevel-origin image in some
+	# ImageMagick builds (loses the fill color); a 2-stop CLUT keeps true RGB.
+	magick "$pbm" -colorspace sRGB \( -size 1x2 "gradient:$color-$bg" \) -clut "$png"
+	if $first; then
+		cp "$png" "$tmpdir/acc.png"
+		first=false
+	else
+		magick "$tmpdir/acc.png" "$png" -background "$bg" +append "$tmpdir/acc_next.png"
+		mv "$tmpdir/acc_next.png" "$tmpdir/acc.png"
+	fi
+done
+
+acc_width=$(magick identify -format '%w' "$tmpdir/acc.png")
+# every glyph carries its own trailing blank column, so the right edge already
+# has a 1px margin — the left edge doesn't, since nothing precedes the first
+# glyph. Pad the canvas 1px on the left only (anchor East) to match.
+magick "$tmpdir/acc.png" -gravity East -background "$bg" -extent "$((acc_width + 1))x7" "$tmpdir/acc_padded.png"
+
+magick "$tmpdir/acc_padded.png" -filter point -resize "${scale}00%" "$outfile"
+echo "$outfile"
