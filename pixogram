@@ -11,11 +11,12 @@ set -eu
 
 usage() {
 	cat <<'EOF'
-usage: pixogram [-o FILE] [-p PALETTE] [-P] [-b BG] [-s SCALE] TEXT[:COLOR] ...
+usage: pixogram [-o FILE] [-p PALETTE] [-l] [-P] [-b BG] [-s SCALE] TEXT[:COLOR] ...
 
   No -o        print ASCII block art to stdout (colors ignored)
   -o FILE      write a PNG instead (needs ImageMagick's `magick`)
-  -p PALETTE   named palette: mini, spring, summer, autumn (default: autumn)
+  -p PALETTE   named palette: mini, spring, summer, autumn (default: summer)
+  -l           use the palette's light variant instead of dark
   -P           write one PNG per built-in palette instead of just one
                (needs -o; each is written as FILE-PALETTE.ext, for comparing)
   -b COLOR     override just the background, hex
@@ -31,32 +32,40 @@ For a styled letter (see LETTER:COLOR1,COLOR2 below), :accent is shorthand
 for the active palette's own two accent colors.
 
 A .env file in the current directory is read for defaults (real values only,
-never executed): PIXOGRAM_PALETTE=name, or PIXOGRAM_BG/FG/ACCENT1/ACCENT2=#hex
-for a fully custom palette. CLI flags win over .env.
+never executed): PIXOGRAM_PALETTE=name, PIXOGRAM_MODE=light, or
+PIXOGRAM_BG/FG/ACCENT1/ACCENT2=#hex for a fully custom palette. CLI flags
+win over .env.
 
 examples:
   pixogram "hello world"
   pixogram -o logo.png "TRACK:#bfe3ff" "EC:#dcd2a0"
   pixogram -o logo.png -p spring "pix" "o:accent" "gram"
+  pixogram -o logo.png -p spring -l "pix" "o:accent" "gram"
   pixogram -o logo.png -P "pix" "o:accent" "gram"
 EOF
 }
 
-# name -> bg fg accent1 accent2. All real mini.hues colors (see README
-# Credits), never invented. mini is the actual mini.nvim logo (their
-# miniwinter scheme); spring/summer/autumn are the other 3 bundled season
-# schemes. mini.hues places its 8 named hues (red/orange/yellow/green/
-# cyan/azure/blue/purple) at fixed 45-degree steps around the OKLCH hue
-# wheel (lua/mini/hues.lua, H.make_hues) — so accent1/accent2 for
-# spring/summer/autumn are each a true complementary pair (180 degrees
-# apart: green+purple, azure+orange, red+cyan), one different pair per
-# palette, not just picked because they looked nice together.
+# name:mode -> bg fg accent1 accent2. All real mini.hues colors (see README
+# Credits), never invented — both the dark values and each scheme's own
+# light-mode block, straight from colors/*.lua in their repo. mini is the
+# actual mini.nvim logo (their miniwinter scheme); spring/summer/autumn are
+# the other 3 bundled season schemes. mini.hues places its 8 named hues
+# (red/orange/yellow/green/cyan/azure/blue/purple) at fixed 45-degree steps
+# around the OKLCH hue wheel (lua/mini/hues.lua, H.make_hues) — so
+# accent1/accent2 for spring/summer/autumn are each a true complementary
+# pair (180 degrees apart: green+purple, azure+orange, red+cyan), one
+# different pair per palette, kept the same pair of named hues between a
+# palette's dark and light variant (just their light-mode hex values).
 resolve_palette() {
-	case "$1" in
-	mini) base_bg="#00182A" base_fg="#D9D8AA" base_a1="#A6E1E2" base_a2="#B8E1C1" ;;
-	spring) base_bg="#1C2617" base_fg="#D8DA9D" base_a1="#ABE5BE" base_a2="#F7C2EA" ;;
-	summer) base_bg="#27211E" base_fg="#F6CC9B" base_a1="#93E4EE" base_a2="#FFC1B9" ;;
-	autumn) base_bg="#262029" base_fg="#EFCFAB" base_a1="#F1C6E2" base_a2="#B4E2C7" ;;
+	case "$1:$2" in
+	mini:dark) base_bg="#00182A" base_fg="#D9D8AA" base_a1="#A6E1E2" base_a2="#B8E1C1" ;;
+	mini:light) base_bg="#DCE4E8" base_fg="#312E29" base_a1="#016D71" base_a2="#00562E" ;;
+	spring:dark) base_bg="#1C2617" base_fg="#D8DA9D" base_a1="#ABE5BE" base_a2="#F7C2EA" ;;
+	spring:light) base_bg="#E0E4DE" base_fg="#2C2E33" base_a1="#006D3F" base_a2="#600051" ;;
+	summer:dark) base_bg="#27211E" base_fg="#F6CC9B" base_a1="#93E4EE" base_a2="#FFC1B9" ;;
+	summer:light) base_bg="#E9E1DD" base_fg="#2C2E33" base_a1="#007E87" base_a2="#700011" ;;
+	autumn:dark) base_bg="#262029" base_fg="#EFCFAB" base_a1="#F1C6E2" base_a2="#B4E2C7" ;;
+	autumn:light) base_bg="#E5E1E7" base_fg="#2F2E29" base_a1="#52073F" base_a2="#005E3D" ;;
 	*)
 		echo "pixogram: unknown palette '$1' (mini, spring, summer, autumn)" >&2
 		exit 1
@@ -482,8 +491,8 @@ build_png() {
 }
 
 outfile=""
-env_palette="" env_bg="" env_fg="" env_a1="" env_a2=""
-cli_palette="" cli_bg=""
+env_palette="" env_bg="" env_fg="" env_a1="" env_a2="" env_mode=""
+cli_palette="" cli_bg="" cli_light=false
 all_palettes=false
 scale=15
 
@@ -492,6 +501,7 @@ if [ -f .env ]; then
 	while IFS='=' read -r k v; do
 		case "$k" in
 		PIXOGRAM_PALETTE) env_palette="$v" ;;
+		PIXOGRAM_MODE) env_mode="$v" ;;
 		PIXOGRAM_BG) env_bg="$v" ;;
 		PIXOGRAM_FG) env_fg="$v" ;;
 		PIXOGRAM_ACCENT1) env_a1="$v" ;;
@@ -500,10 +510,11 @@ if [ -f .env ]; then
 	done <.env
 fi
 
-while getopts "o:p:Pb:s:h" opt; do
+while getopts "o:p:lPb:s:h" opt; do
 	case "$opt" in
 	o) outfile="$OPTARG" ;;
 	p) cli_palette="$OPTARG" ;;
+	l) cli_light=true ;;
 	P) all_palettes=true ;;
 	b) cli_bg="$OPTARG" ;;
 	s) scale="$OPTARG" ;;
@@ -518,6 +529,15 @@ while getopts "o:p:Pb:s:h" opt; do
 	esac
 done
 shift $((OPTIND - 1))
+
+if $cli_light; then
+	mode="light"
+else
+	case "$env_mode" in
+	light) mode="light" ;;
+	*) mode="dark" ;;
+	esac
+fi
 
 [ $# -ge 1 ] || {
 	usage
@@ -544,14 +564,16 @@ if $all_palettes; then
 	base="${outfile%.*}"
 	ext="${outfile##*.}"
 	for name in mini spring summer autumn; do
-		resolve_palette "$name"
+		resolve_palette "$name" "$mode"
 		bg="$base_bg" fg="$base_fg" a1="$base_a1" a2="$base_a2"
-		build_png "$base-$name.$ext" "$@"
+		suffix="$name"
+		[ "$mode" = "light" ] && suffix="$name-light"
+		build_png "$base-$suffix.$ext" "$@"
 	done
 	exit 0
 fi
 
-resolve_palette "${cli_palette:-${env_palette:-autumn}}"
+resolve_palette "${cli_palette:-${env_palette:-summer}}" "$mode"
 if [ -n "$cli_palette" ]; then
 	# an explicit -p wins clean over any individual .env override — only an
 	# explicit -b on top of it can still adjust the background.
