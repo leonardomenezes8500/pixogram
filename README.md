@@ -1,4 +1,4 @@
-# pixogram
+![pixogram](assets/logo.png)
 
 figlet, mas no estilo pixel-art bloco-único do logo do [mini.nvim](https://github.com/nvim-mini/mini.nvim): grade 4x7, sem antialiasing, sem artefato de fonte — todo glifo é reto e uniforme.
 
