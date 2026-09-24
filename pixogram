@@ -45,15 +45,18 @@ EOF
 # name -> bg fg accent1 accent2. All real mini.hues colors (see README
 # Credits), never invented. mini is the actual mini.nvim logo (their
 # miniwinter scheme); spring/summer/autumn are the other 3 bundled season
-# schemes. accent1/accent2 are hand-picked per palette from each scheme's
-# own named hues, chosen so each palette's accent1 reads as a clearly
-# different color from the others' (not just 4x the same cyan-green pair).
+# schemes. mini.hues places its 8 named hues (red/orange/yellow/green/
+# cyan/azure/blue/purple) at fixed 45-degree steps around the OKLCH hue
+# wheel (lua/mini/hues.lua, H.make_hues) — so accent1/accent2 for
+# spring/summer/autumn are each a true complementary pair (180 degrees
+# apart: green+purple, azure+orange, red+cyan), one different pair per
+# palette, not just picked because they looked nice together.
 resolve_palette() {
 	case "$1" in
 	mini) base_bg="#00182A" base_fg="#D9D8AA" base_a1="#A6E1E2" base_a2="#B8E1C1" ;;
 	spring) base_bg="#1C2617" base_fg="#D8DA9D" base_a1="#ABE5BE" base_a2="#F7C2EA" ;;
-	summer) base_bg="#27211E" base_fg="#F6CC9B" base_a1="#FFC1B9" base_a2="#93E4EE" ;;
-	autumn) base_bg="#262029" base_fg="#EFCFAB" base_a1="#F1C6E2" base_a2="#B8D9FC" ;;
+	summer) base_bg="#27211E" base_fg="#F6CC9B" base_a1="#93E4EE" base_a2="#FFC1B9" ;;
+	autumn) base_bg="#262029" base_fg="#EFCFAB" base_a1="#F1C6E2" base_a2="#B4E2C7" ;;
 	*)
 		echo "pixogram: unknown palette '$1' (mini, spring, summer, autumn)" >&2
 		exit 1

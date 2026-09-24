@@ -33,14 +33,14 @@ pixogram [-o FILE] [-p PALETTE] [-P] [-b BG] [-s SCALE] TEXT[:COLOR] ...
 
 `-p PALETTE` picks one of 4 built-in palettes (default: `autumn`). Each is `bg` + `fg` + two accent colors, real values from [mini.hues](https://github.com/nvim-mini/mini.nvim)'s 4 bundled color schemes (see [Credits](#credits)) — not made up. `mini` is the actual real mini.nvim logo colors; it exists as an option but isn't the default, so pixogram doesn't just look like a reskin of the thing it's copying.
 
-| palette  | bg        | fg        | accents             |
-|----------|-----------|-----------|----------------------|
-| `autumn` | `#262029` | `#EFCFAB` | `#F1C6E2` `#B8D9FC`  |
+| palette  | bg        | fg        | accents              |
+|----------|-----------|-----------|-----------------------|
+| `autumn` | `#262029` | `#EFCFAB` | `#F1C6E2` `#B4E2C7`  |
 | `spring` | `#1C2617` | `#D8DA9D` | `#ABE5BE` `#F7C2EA`  |
-| `summer` | `#27211E` | `#F6CC9B` | `#FFC1B9` `#93E4EE`  |
+| `summer` | `#27211E` | `#F6CC9B` | `#93E4EE` `#FFC1B9`  |
 | `mini`   | `#00182A` | `#D9D8AA` | `#A6E1E2` `#B8E1C1`  |
 
-Each palette's accent1 (`pix` in the examples above) is picked to read as a genuinely different color from the others' — not 4 palettes that all happen to use the same cyan-green pair just because that's what came up first in each source scheme.
+mini.hues places its 8 named hues (red/orange/yellow/green/cyan/azure/blue/purple) at fixed 45° steps around the OKLCH hue wheel (`H.make_hues` in `lua/mini/hues.lua`). `mini`'s accents (cyan+green) are the real logo's own — not our choice, just transcribed. For `spring`/`summer`/`autumn` each palette's two accents are a true complementary pair from that wheel — 180° apart, the strongest-contrast pairing there is — and each uses a *different* pair (green+purple, azure+orange, red+cyan), so accent1 (`pix` above) still reads as a clearly different color across all 4. Not picked because they looked nice together — picked because the math says they're opposites.
 
 ```
 pixogram -o logo.png -p spring "pix:accent1" "o:accent" "gram:accent2"
