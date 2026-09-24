@@ -33,12 +33,14 @@ pixogram [-o FILE] [-p PALETTE] [-P] [-b BG] [-s SCALE] TEXT[:COLOR] ...
 
 `-p PALETTE` picks one of 4 built-in palettes (default: `autumn`). Each is `bg` + `fg` + two accent colors, real values from [mini.hues](https://github.com/nvim-mini/mini.nvim)'s 4 bundled color schemes (see [Credits](#credits)) — not made up. `mini` is the actual real mini.nvim logo colors; it exists as an option but isn't the default, so pixogram doesn't just look like a reskin of the thing it's copying.
 
-| palette  | bg        | fg        | accents            |
-|----------|-----------|-----------|---------------------|
-| `autumn` | `#262029` | `#EFCFAB` | `#A7E1E8` `#D3DAAD` |
-| `spring` | `#1C2617` | `#D8DA9D` | `#94E5EA` `#ABE5BE` |
-| `summer` | `#27211E` | `#F6CC9B` | `#93E4EE` `#D8CAFF` |
-| `mini`   | `#00182A` | `#D9D8AA` | `#A6E1E2` `#B8E1C1` |
+| palette  | bg        | fg        | accents             |
+|----------|-----------|-----------|----------------------|
+| `autumn` | `#262029` | `#EFCFAB` | `#F1C6E2` `#B8D9FC`  |
+| `spring` | `#1C2617` | `#D8DA9D` | `#ABE5BE` `#F7C2EA`  |
+| `summer` | `#27211E` | `#F6CC9B` | `#FFC1B9` `#93E4EE`  |
+| `mini`   | `#00182A` | `#D9D8AA` | `#A6E1E2` `#B8E1C1`  |
+
+Each palette's accent1 (`pix` in the examples above) is picked to read as a genuinely different color from the others' — not 4 palettes that all happen to use the same cyan-green pair just because that's what came up first in each source scheme.
 
 ```
 pixogram -o logo.png -p spring "pix:accent1" "o:accent" "gram:accent2"

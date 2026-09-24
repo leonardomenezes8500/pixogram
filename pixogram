@@ -42,16 +42,18 @@ examples:
 EOF
 }
 
-# name -> bg fg accent1 accent2. mini is the real mini.nvim logo colors
-# (their miniwinter mini.hues scheme); spring/summer/autumn are the other
-# 3 bundled mini.hues season schemes, same "warm fg + cool accent pair"
-# recipe as the real logo, different hues so they're not just a reskin.
+# name -> bg fg accent1 accent2. All real mini.hues colors (see README
+# Credits), never invented. mini is the actual mini.nvim logo (their
+# miniwinter scheme); spring/summer/autumn are the other 3 bundled season
+# schemes. accent1/accent2 are hand-picked per palette from each scheme's
+# own named hues, chosen so each palette's accent1 reads as a clearly
+# different color from the others' (not just 4x the same cyan-green pair).
 resolve_palette() {
 	case "$1" in
 	mini) base_bg="#00182A" base_fg="#D9D8AA" base_a1="#A6E1E2" base_a2="#B8E1C1" ;;
-	spring) base_bg="#1C2617" base_fg="#D8DA9D" base_a1="#94E5EA" base_a2="#ABE5BE" ;;
-	summer) base_bg="#27211E" base_fg="#F6CC9B" base_a1="#93E4EE" base_a2="#D8CAFF" ;;
-	autumn) base_bg="#262029" base_fg="#EFCFAB" base_a1="#A7E1E8" base_a2="#D3DAAD" ;;
+	spring) base_bg="#1C2617" base_fg="#D8DA9D" base_a1="#ABE5BE" base_a2="#F7C2EA" ;;
+	summer) base_bg="#27211E" base_fg="#F6CC9B" base_a1="#FFC1B9" base_a2="#93E4EE" ;;
+	autumn) base_bg="#262029" base_fg="#EFCFAB" base_a1="#F1C6E2" base_a2="#B8D9FC" ;;
 	*)
 		echo "pixogram: unknown palette '$1' (mini, spring, summer, autumn)" >&2
 		exit 1
