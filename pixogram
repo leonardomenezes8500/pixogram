@@ -314,6 +314,9 @@ BEGIN {
 	style["o",5] = "0110"
 	# "n" — the real mini.nvim wordmark glyph: left leg one color, the
 	# top bridge + right leg the other. Transcribed from font/n-neovim.gif.
+	# Their actual colors there are cyan #A6E1E2 (left leg) and green
+	# #B8E1C1 (bridge+right leg) — not the MINI./VIM blue or tan.
+	# e.g.: pixogram -o logo.png "mini.:#B3DAF9" "n:#A6E1E2,#B8E1C1" "vim:#D9D8AA"
 	style["n",1] = "1100"
 	style["n",2] = "0010"
 	style["n",3] = "0010"

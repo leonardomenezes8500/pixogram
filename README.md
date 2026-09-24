@@ -1,8 +1,8 @@
 ![pixogram](assets/logo.png)
 
-figlet, mas no estilo pixel-art bloco-único do logo do [mini.nvim](https://github.com/nvim-mini/mini.nvim): grade 4x7, sem antialiasing, sem artefato de fonte — todo glifo é reto e uniforme.
+figlet, but in the single-block pixel-art style of the [mini.nvim](https://github.com/nvim-mini/mini.nvim) logo: a 4x7 grid, no antialiasing, no font-hinting artifacts — every glyph is straight and uniform.
 
-> Isso é praticamente uma cópia da técnica (e da fonte) que [Evgeni Chasnovski](https://github.com/echasnovski) criou pro `mini.nvim` — ver [Créditos](#créditos). `pixogram` só generaliza pra qualquer texto, em `sh` POSIX em vez de Lua+Neovim.
+> This is basically a copy of the technique (and the font) [Evgeni Chasnovski](https://github.com/echasnovski) built for `mini.nvim` — see [Credits](#credits). `pixogram` just generalizes it to any text, in POSIX `sh` instead of Lua+Neovim.
 
 ```
 $ pixogram "hello world"
@@ -17,36 +17,38 @@ $ pixogram "hello world"
 $ pixogram -o logo.png "track:#bfe3ff" "ec:#dcd2a0"
 ```
 
-## Uso
+## Usage
 
 ```
 pixogram [-o FILE] [-b BG] [-s SCALE] TEXT[:COLOR] ...
 ```
 
-- Sem `-o`: imprime block-art ASCII no stdout (bom pra colar em comentário de código — não precisa de cor).
-- `-o FILE`: gera um PNG (precisa do `magick`, do ImageMagick).
-- `-b COLOR`: cor de fundo, hex (padrão `#00182A`).
-- `-s SCALE`: fator de upscale por célula da grade no PNG (padrão `15`, o mesmo que o mini.nvim usa pro README deles — `15 * 7 = 105px` de altura).
-- Cada argumento de texto pode levar sua própria `:COR` pro modo PNG (padrão `#D9D8AA`). Vários argumentos só são concatenados — sem espaço entre eles — porque cada glifo já carrega sua própria coluna em branco à direita.
-- Só existem `a-z`, `0-9` e espaço. Qualquer outro caractere vira uma célula em branco.
-- **Letra estilizada (2 cores numa letra só):** pra uma letra individual, `LETRA:COR1,COR2` pinta parte do próprio glifo numa cor e o resto noutra — é o mesmo tratamento que o mini.nvim dá pro "n" do logo deles. Só funciona pra um caractere por vez, e só existe pra letras com um estilo definido no script (hoje: `o`, `n`). Não é automático nem "inteligente" — é uma tabelinha `style[]` opcional que você adiciona à mão quando quiser esse efeito numa letra nova.
+- No `-o`: prints ASCII block art to stdout (good for pasting into a code comment — no color needed).
+- `-o FILE`: writes a PNG instead (needs ImageMagick's `magick`).
+- `-b COLOR`: background color, hex (default `#00182A`).
+- `-s SCALE`: PNG upscale factor per grid cell (default `15`, the same mini.nvim uses for their own README — `15 * 7 = 105px` tall).
+- Each text argument can carry its own `:COLOR` for PNG mode (default `#D9D8AA`). Multiple arguments are just concatenated — no gap between them — because every glyph already carries its own trailing blank column.
+- Only `a-z`, `0-9`, and space exist. Any other character renders as a blank cell.
+- **Styled letter (2 colors in one glyph):** for a single letter, `LETTER:COLOR1,COLOR2` paints part of that glyph one color and the rest another — the same treatment mini.nvim gives the "n" in their logo. Only works one character at a time, and only for letters with a style defined in the script (currently: `o`, `n`). It's not automatic or "smart" — it's an optional `style[]` table you add to by hand when you want that effect on a new letter.
 
   ```
-  pixogram -o logo.png "pix:#B3DAF9" "o:#B3DAF9,#D9D8AA" "gram:#D9D8AA"
+  pixogram -o logo.png "mini:#B3DAF9" "n:#A6E1E2,#B8E1C1" "vim:#D9D8AA"
   ```
 
-## Instalação
+  (mini.nvim's own logo also has a "." after "mini" — `pixogram` has no `.` glyph, so it's left out here.)
+
+## Install
 
 ```
-make install               # instala em ~/.local/bin/pixogram
-make install PREFIX=/usr   # ou em outro prefixo
+make install               # installs to ~/.local/bin/pixogram
+make install PREFIX=/usr   # or another prefix
 make uninstall
 ```
 
-Só precisa de `sh` POSIX (testado com `dash`), `awk` e, pro modo `-o`, `magick` (ImageMagick 7).
+Just needs POSIX `sh` (tested with `dash`), `awk`, and, for `-o`, `magick` (ImageMagick 7).
 
-## Créditos
+## Credits
 
-Todo o crédito da fonte e da técnica é de **[Evgeni Chasnovski](https://github.com/echasnovski)** ([@echasnovski](https://github.com/echasnovski)), autor do [mini.nvim](https://github.com/nvim-mini/mini.nvim). A grade de pixels de cada letra foi transcrita pixel a pixel dos arquivos [`logo-2/font/*.gif`](https://github.com/nvim-mini/assets/tree/main/logo-2/font) do repositório [nvim-mini/assets](https://github.com/nvim-mini/assets) (MIT License), que é o gerador real por trás do logo do mini.nvim (`logo-2/generate.lua`). As cores padrão (`#00182A` fundo, `#D9D8AA` letra) também vêm de lá.
+All credit for the font and the technique goes to **[Evgeni Chasnovski](https://github.com/echasnovski)** ([@echasnovski](https://github.com/echasnovski)), author of [mini.nvim](https://github.com/nvim-mini/mini.nvim). Every letter's pixel grid was transcribed pixel-by-pixel from the [`logo-2/font/*.gif`](https://github.com/nvim-mini/assets/tree/main/logo-2/font) files in the [nvim-mini/assets](https://github.com/nvim-mini/assets) repo (MIT License), which is the actual generator behind the mini.nvim logo (`logo-2/generate.lua`). The default colors (`#00182A` background, `#D9D8AA` letter) come from there too.
 
-`pixogram` não teria existido sem esse trabalho — é essencialmente uma reimplementação da mesma ideia em `sh` POSIX + `awk`, pra gerar texto qualquer em vez de só os módulos do mini.nvim. Ver [LICENSE](LICENSE) pro aviso de copyright completo.
+`pixogram` wouldn't exist without that work — it's essentially a reimplementation of the same idea in POSIX `sh` + `awk`, to generate arbitrary text instead of just mini.nvim's own modules. See [LICENSE](LICENSE) for the full copyright notice.
