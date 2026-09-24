@@ -406,7 +406,11 @@ build_png() {
 		*:*) color="${seg#*:}" ;;
 		*) color="$fg" ;;
 		esac
-		[ "$color" = "accent" ] && color="$a1,$a2"
+		case "$color" in
+		accent) color="$a1,$a2" ;;
+		accent1) color="$a1" ;;
+		accent2) color="$a2" ;;
+		esac
 		t_lower=$(printf '%s' "$t" | tr 'A-Z' 'a-z')
 		png="$tmpdir/seg.png"
 		color2=""

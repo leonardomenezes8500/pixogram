@@ -14,7 +14,7 @@ $ pixogram "hello world"
 ```
 
 ```
-$ pixogram -o logo.png "pix" "o:accent" "gram"
+$ pixogram -o logo.png "pix:accent1" "o:accent" "gram:accent2"
 ```
 
 ## Usage
@@ -41,13 +41,13 @@ pixogram [-o FILE] [-p PALETTE] [-P] [-b BG] [-s SCALE] TEXT[:COLOR] ...
 | `mini`   | `#00182A` | `#D9D8AA` | `#A6E1E2` `#B8E1C1` |
 
 ```
-pixogram -o logo.png -p spring "pix" "o:accent" "gram"
+pixogram -o logo.png -p spring "pix:accent1" "o:accent" "gram:accent2"
 ```
 
 `-P` writes one PNG per built-in palette instead of just one (`FILE-PALETTE.ext` for each), so you can compare and pick:
 
 ```
-pixogram -o logo.png -P "pix" "o:accent" "gram"
+pixogram -o logo.png -P "pix:accent1" "o:accent" "gram:accent2"
 # -> logo-mini.png logo-spring.png logo-summer.png logo-autumn.png
 ```
 
@@ -55,7 +55,9 @@ pixogram -o logo.png -P "pix" "o:accent" "gram"
 
 ### Styled letter (2 colors in one glyph)
 
-For a single letter, `LETTER:COLOR1,COLOR2` paints part of that glyph one color and the rest another — the same treatment mini.nvim gives the "n" in their logo. Only works one character at a time, and only for letters with a style defined in the script (currently: `o`, `n`). It's not automatic or "smart" — it's an optional `style[]` table you add to by hand when you want that effect on a new letter. `LETTER:accent` is shorthand for the active palette's own two accent colors — that's what the examples above are using.
+For a single letter, `LETTER:COLOR1,COLOR2` paints part of that glyph one color and the rest another — the same treatment mini.nvim gives the "n" in their logo. Only works one character at a time, and only for letters with a style defined in the script (currently: `o`, `n`). It's not automatic or "smart" — it's an optional `style[]` table you add to by hand when you want that effect on a new letter.
+
+`LETTER:accent` is shorthand for the active palette's own two accent colors; `:accent1` / `:accent2` are shorthand for just one of them, on an ordinary (non-styled) segment. That's what the examples above are doing — `pix:accent1` and `gram:accent2` make the styled `o` read as a transition between the two, instead of an unrelated flourish sitting between two same-colored words.
 
 ```
 pixogram -o logo.png "mini:#B3DAF9" "n:#A6E1E2,#B8E1C1" "vim:#D9D8AA"
