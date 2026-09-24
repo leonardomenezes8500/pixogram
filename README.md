@@ -29,6 +29,11 @@ pixogram [-o FILE] [-b BG] [-s SCALE] TEXT[:COLOR] ...
 - `-s SCALE`: fator de upscale por célula da grade no PNG (padrão `15`, o mesmo que o mini.nvim usa pro README deles — `15 * 7 = 105px` de altura).
 - Cada argumento de texto pode levar sua própria `:COR` pro modo PNG (padrão `#D9D8AA`). Vários argumentos só são concatenados — sem espaço entre eles — porque cada glifo já carrega sua própria coluna em branco à direita.
 - Só existem `a-z`, `0-9` e espaço. Qualquer outro caractere vira uma célula em branco.
+- **Letra estilizada (2 cores numa letra só):** pra uma letra individual, `LETRA:COR1,COR2` pinta parte do próprio glifo numa cor e o resto noutra — é o mesmo tratamento que o mini.nvim dá pro "n" do logo deles. Só funciona pra um caractere por vez, e só existe pra letras com um estilo definido no script (hoje: `o`, `n`). Não é automático nem "inteligente" — é uma tabelinha `style[]` opcional que você adiciona à mão quando quiser esse efeito numa letra nova.
+
+  ```
+  pixogram -o logo.png "pix:#B3DAF9" "o:#B3DAF9,#D9D8AA" "gram:#D9D8AA"
+  ```
 
 ## Instalação
 

@@ -35,6 +35,15 @@ function get(ch, r,    k) {
 	k = ch SUBSEP r
 	return (k in font) ? font[k] : "0000"
 }
+# style[ch,row]: which "on" pixels of a glyph go to the 2nd color instead of
+# the 1st, for the handful of letters we bothered to hand-style (see -o
+# TEXT:COLOR1,COLOR2 below). Not a general rule — mini.nvim only ever does
+# this for one letter in its whole font (the "n" in their nvim wordmark);
+# it's opt-in per letter, add more here as needed.
+function get_style(ch, r,    k) {
+	k = ch SUBSEP r
+	return (k in style) ? style[k] : "0000"
+}
 BEGIN {
 	font["0",0] = "0000"
 	font["0",1] = "0100"
@@ -296,6 +305,21 @@ BEGIN {
 	font[" ",5] = "0000"
 	font[" ",6] = "0000"
 
+	# hand-styled letters: which of their "on" pixels use the 2nd color.
+	# "o" — our own split, left stroke vs. the rest (top/right/bottom arc).
+	style["o",1] = "0110"
+	style["o",2] = "0010"
+	style["o",3] = "0010"
+	style["o",4] = "0010"
+	style["o",5] = "0110"
+	# "n" — the real mini.nvim wordmark glyph: left leg one color, the
+	# top bridge + right leg the other. Transcribed from font/n-neovim.gif.
+	style["n",1] = "1100"
+	style["n",2] = "0010"
+	style["n",3] = "0010"
+	style["n",4] = "0010"
+	style["n",5] = "0010"
+
 	n = length(text)
 	for (r = 0; r < 7; r++) {
 		line = ""
@@ -308,6 +332,18 @@ BEGIN {
 					bit = substr(row, c, 1)
 					line = line (bit == "1" ? "█" : " ")
 				}
+			} else if (mode == "grid3") {
+				# 3-level grid for a styled glyph: '0'=background,
+				# '1'=color1 (style bit 0), '2'=color2 (style bit 1).
+				srow = get_style(ch, r)
+				w = length(row)
+				out = ""
+				for (c = 1; c <= w; c++) {
+					fbit = substr(row, c, 1)
+					sbit = substr(srow, c, 1)
+					out = out (fbit != "1" ? "0" : (sbit == "1" ? "2" : "1"))
+				}
+				line = line out
 			} else {
 				line = line row
 			}
@@ -377,17 +413,50 @@ for seg in "$@"; do
 	*) color="$fg_default" ;;
 	esac
 	t_lower=$(printf '%s' "$t" | tr 'A-Z' 'a-z')
-	grid=$(render "$t_lower" grid)
-	width=$(printf '%s\n' "$grid" | head -n 1 | awk '{ print length }')
-	pbm="$tmpdir/seg.pbm"
-	{
-		printf 'P1\n%s 7\n' "$width"
-		printf '%s\n' "$grid"
-	} >"$pbm"
 	png="$tmpdir/seg.png"
-	# -opaque collapses to grayscale on a bilevel-origin image in some
-	# ImageMagick builds (loses the fill color); a 2-stop CLUT keeps true RGB.
-	magick "$pbm" -colorspace sRGB \( -size 1x2 "gradient:$color-$bg" \) -clut "$png"
+	color2=""
+
+	case "$color" in
+	*,* )
+		# TEXT:COLOR1,COLOR2 — 2-color styled glyph. Only meaningful for a
+		# single letter that has a `style[]` entry (see AWKPROG); anything
+		# else falls back to plain COLOR1 below.
+		color1="${color%%,*}"
+		color2="${color#*,}"
+		;;
+	*) color1="$color" ;;
+	esac
+
+	if [ -n "${color2:-}" ] && [ "${#t_lower}" -eq 1 ]; then
+		grid3=$(render "$t_lower" grid3)
+		width=$(printf '%s\n' "$grid3" | head -n 1 | awk '{ print length }')
+		pgm="$tmpdir/seg.pgm"
+		{
+			printf 'P2\n%s 7\n255\n' "$width"
+			printf '%s\n' "$grid3" | awk '{
+				out = ""
+				for (i = 1; i <= length($0); i++) {
+					d = substr($0, i, 1)
+					out = out (d == "0" ? "0" : d == "1" ? "128" : "255") " "
+				}
+				print out
+			}'
+		} >"$pgm"
+		clut3="$tmpdir/clut3.png"
+		magick xc:"$bg" xc:"$color1" xc:"$color2" +append "$clut3"
+		magick "$pgm" -colorspace sRGB "$clut3" -clut "$png"
+	else
+		grid=$(render "$t_lower" grid)
+		width=$(printf '%s\n' "$grid" | head -n 1 | awk '{ print length }')
+		pbm="$tmpdir/seg.pbm"
+		{
+			printf 'P1\n%s 7\n' "$width"
+			printf '%s\n' "$grid"
+		} >"$pbm"
+		# -opaque collapses to grayscale on a bilevel-origin image in some
+		# ImageMagick builds (loses the fill color); a 2-stop CLUT keeps true RGB.
+		magick "$pbm" -colorspace sRGB \( -size 1x2 "gradient:$color1-$bg" \) -clut "$png"
+	fi
 	if $first; then
 		cp "$png" "$tmpdir/acc.png"
 		first=false
