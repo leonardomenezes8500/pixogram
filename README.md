@@ -71,7 +71,11 @@ For a single letter, `LETTER:COLOR1,COLOR2` paints part of that glyph one color 
 pixogram -o logo.png "mini:#B3DAF9" "n:#A6E1E2,#B8E1C1" "vim:#D9D8AA"
 ```
 
+![mini/n/vim styled-letter example](assets/example-mini-nvim.png)
+
 (mini.nvim's own logo also has a "." after "mini" — `pixogram` has no `.` glyph, so it's left out here.)
+
+This is a demo of the mechanism, not something every logo needs — most words don't have a letter worth singling out like this, and it only ever applies to one hand-styled letter at a time. `pixogram`'s own logo only styles the `o`; the rest is plain 2-color like any other segment.
 
 ### Project defaults (`.env`)
 
