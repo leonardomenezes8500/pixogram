@@ -26,7 +26,7 @@ usage: pixogram [-o FILE] [-p PALETTE] [-l] [-P] [-b BG] [-s SCALE] TEXT[:COLOR]
 Each TEXT argument may carry its own :COLOR for -o mode; with no :COLOR it
 uses the active palette's fg. Multiple TEXT args are just concatenated — no
 gap is inserted, since every glyph already carries its own trailing blank
-column. Unsupported characters (only a-z0-9 and space exist) render blank.
+column. Unsupported characters (only a-z0-9, "." and space exist) render blank.
 
 For a styled letter (see LETTER:COLOR1,COLOR2 below), :accent is shorthand
 for the active palette's own two accent colors.
@@ -347,6 +347,15 @@ BEGIN {
 	font[" ",4] = "0000"
 	font[" ",5] = "0000"
 	font[" ",6] = "0000"
+	# "." has no font/*.gif of its own: it only exists baked into
+	# font/prefix.gif (the "MINI." every mini.nvim logo starts with).
+	font[".",0] = "0000"
+	font[".",1] = "0000"
+	font[".",2] = "0000"
+	font[".",3] = "0000"
+	font[".",4] = "0000"
+	font[".",5] = "0100"
+	font[".",6] = "0000"
 
 	# hand-styled letters: which of their "on" pixels use the 2nd color.
 	# "o" — our own split, left stroke vs. the rest (top/right/bottom arc).

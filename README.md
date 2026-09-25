@@ -23,7 +23,7 @@ pixogram [-o FILE] [-p PALETTE] [-l] [-P] [-b BG] [-s SCALE] TEXT[:COLOR] ...
 - `-b COLOR`: override just the background.
 - `-s SCALE`: PNG upscale factor per grid cell (default `15`).
 - Each text argument can carry its own `:COLOR`; with none, it uses the palette's `fg`. `:accent` / `:accent1` / `:accent2` are shorthand for the palette's accent colors. Arguments are concatenated with no gap.
-- Only `a-z`, `0-9`, and space exist. Anything else renders blank.
+- Only `a-z`, `0-9`, `.` and space exist. Anything else renders blank. The `.` comes from `font/prefix.gif`, the "MINI." at the start of every mini.nvim logo, since it has no glyph file of its own.
 
 ```
 pixogram -o logo.png "pix:accent1" "o:accent" "gram:accent2"
